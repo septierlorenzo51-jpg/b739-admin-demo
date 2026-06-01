@@ -426,6 +426,12 @@ function buildMobileSidebar() {
     }
 }
 
+function initNavigation() {
+    document.querySelectorAll('aside .nav-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => { switchToTab(e.currentTarget.getAttribute('data-target')); });
+    });
+}
+
 function toggleMobileSidebar(open) {
     const sidebar = document.getElementById('mobile-sidebar');
     const overlay = document.getElementById('mobile-sidebar-overlay');
