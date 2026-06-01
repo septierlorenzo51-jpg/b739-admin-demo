@@ -893,6 +893,10 @@ async function loadPresentation(container) {
         reviews: []
     });
     renderPresentationUI(container, data);
+    // Auto-fetch Google reviews après render
+    if (isApiConfigured) {
+        setTimeout(() => syncGoogleReviews(), 300);
+    }
 }
 
 function renderPresentationUI(container, data) {
@@ -934,30 +938,6 @@ function renderPresentationUI(container, data) {
                 <p class="text-xs text-gray-400">Cliquez sur "Synchroniser" pour importer les avis depuis Google Business.</p>
             </div>
         </div>
-        <script>
-            (async function() {
-                if (isApiConfigured) {
-                    try {
-                        const res = await apiGet('getReviews');
-                        const grid = document.getElementById('reviews-grid');
-                        if (grid && res.success && res.data.length) {
-                            grid.innerHTML = res.data.map(r => `
-                                <div class="border border-gray-200 p-4 rounded bg-gray-50 text-xs">
-                                    <div class="flex justify-between items-center mb-2">
-                                        <span class="font-bold text-gray-900">${r.auteur}</span>
-                                        <span class="text-yellow-600 font-bold">${'★'.repeat(r.note)}</span>
-                                    </div>
-                                    <p class="text-gray-600 italic">"${r.texte}"</p>
-                                    <p class="text-gray-400 mt-1">${r.date}</p>
-                                </div>
-                            `).join('');
-                        } else if (grid) {
-                            grid.innerHTML = '<p class="text-xs text-gray-400">Aucun avis 4–5 ★ trouvé sur Google Business.</p>';
-                        }
-                    } catch (e) {}
-                }
-            })();
-        </script>
     `;
 }
 
