@@ -1,599 +1,1199 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Studio 739 — Console d'Administration</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <script>
-    tailwind.config = {
-      theme: {
-        extend: {
-          colors: {
-            teal: { 50: '#f0f9fa', 100: '#d9f0f3', 500: '#2f7384', 600: '#21515d', 700: '#15343c' },
-            sand: { 50: '#fafaf9', 100: '#f5f5f4' }
-          }
-        }
-      }
-    }
-  </script>
-  <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
-    body { font-family: 'Inter', sans-serif; }
-    .sidebar-link { @apply flex items-center gap-3 px-4 py-3 text-sm font-medium text-gray-600 rounded-lg transition-all hover:bg-teal-50 hover:text-teal-600; }
-    .sidebar-link.active { @apply bg-teal-50 text-teal-600 font-semibold; }
-    .card { @apply bg-white rounded-xl border border-gray-100 shadow-sm; }
-    .btn-primary { @apply px-4 py-2 bg-teal-500 text-white text-sm font-medium rounded-lg hover:bg-teal-600 transition-colors; }
-    .btn-secondary { @apply px-4 py-2 bg-gray-100 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-200 transition-colors; }
-    .btn-danger { @apply px-4 py-2 bg-red-50 text-red-600 text-sm font-medium rounded-lg hover:bg-red-100 transition-colors; }
-    .btn-success { @apply px-4 py-2 bg-emerald-50 text-emerald-600 text-sm font-medium rounded-lg hover:bg-emerald-100 transition-colors; }
-    .table-container { @apply overflow-x-auto; }
-    .data-table { @apply w-full text-sm text-left; }
-    .data-table thead { @apply text-xs text-gray-500 uppercase bg-gray-50; }
-    .data-table th { @apply px-4 py-3 font-medium; }
-    .data-table td { @apply px-4 py-3 border-t border-gray-100; }
-    .status-badge { @apply inline-flex px-2 py-1 text-xs font-medium rounded-full; }
-    .status-pending { @apply bg-amber-50 text-amber-600; }
-    .status-confirmed { @apply bg-emerald-50 text-emerald-600; }
-    .status-completed { @apply bg-blue-50 text-blue-600; }
-    .status-cancelled { @apply bg-red-50 text-red-600; }
-    .loading-spinner { @apply inline-block w-5 h-5 border-2 border-gray-200 border-t-teal-500 rounded-full animate-spin; }
-    .fade-in { animation: fadeIn 0.3s ease-out; }
-    @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
-    input, select, textarea { @apply w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500; }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Studio 739 - Console d'Administration</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+body { font-family: 'Roboto', 'Segoe UI', system-ui, -apple-system, sans-serif; background-color: #f1f3f4; }
+.chart-container { position: relative; width: 100%; max-width: 100%; height: 280px; }
+.hide { display: none !important; }
+.active-nav { background-color: rgba(26, 115, 232, 0.08); color: #1a73e8; font-weight: 500; border-left: 4px solid #1a73e8; }
+.status-badge { padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 500; display: inline-flex; align-items: center; gap: 6px; }
+.status-pending { background-color: #fef7e0; color: #b06000; border: 1px solid #feebc8; }
+.status-confirmed { background-color: #e6f4ea; color: #137333; border: 1px solid #c2e7cd; }
+.status-completed { background-color: #e8f0fe; color: #1a73e8; border: 1px solid #d2e3fc; }
+.status-cancelled { background-color: #fce8e6; color: #c5221f; border: 1px solid #fad2cf; }
+.google-shadow-sm { box-shadow: 0 1px 2px 0 rgba(60,64,67,0.3), 0 1px 3px 1px rgba(60,64,67,0.15); }
+.google-shadow-md { box-shadow: 0 1px 3px 0 rgba(60,64,67,0.3), 0 4px 8px 3px rgba(60,64,67,0.15); }
+.loading-spinner { display: inline-block; width: 16px; height: 16px; border: 2px solid #e5e7eb; border-top-color: #1a73e8; border-radius: 50%; animation: spin 0.6s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+</style>
 </head>
-<body class="bg-sand-50 text-gray-800">
+<body class="text-gray-800 flex h-screen overflow-hidden">
 
-  <!-- ========== LAYOUT ========== -->
-  <div class="flex h-screen overflow-hidden">
+<div id="mobile-sidebar-overlay" class="fixed inset-0 bg-black/40 z-30 hidden transition-opacity" onclick="toggleMobileSidebar(false)"></div>
 
-    <!-- Sidebar -->
-    <aside class="w-64 bg-white border-r border-gray-100 flex flex-col shrink-0">
-      <div class="p-6 border-b border-gray-100">
+<aside id="mobile-sidebar" class="fixed inset-y-0 left-0 w-64 bg-white z-40 border-r border-gray-200 flex flex-col transform -translate-x-full transition-transform duration-300 md:hidden">
+    <div class="p-6 border-b border-gray-100 flex items-center justify-between">
         <div class="flex items-center gap-3">
-          <div class="w-8 h-8 bg-teal-500 rounded-lg flex items-center justify-center text-white font-bold text-sm">739</div>
-          <span class="font-semibold text-gray-900">Studio 739</span>
+            <div class="w-8 h-8 bg-blue-600 rounded flex items-center justify-center font-bold text-lg text-white">S</div>
+            <span class="text-lg font-medium tracking-tight text-gray-900">Studio 739</span>
         </div>
-      </div>
-      <nav class="flex-1 p-4 space-y-1">
-        <button onclick="app.navigate('dashboard')" id="nav-dashboard" class="sidebar-link active w-full">
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/></svg>
-          Tableau de bord
-        </button>
-        <button onclick="app.navigate('reservations')" id="nav-reservations" class="sidebar-link w-full">
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
-          Réservations
-        </button>
-        <button onclick="app.navigate('clients')" id="nav-clients" class="sidebar-link w-full">
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm6 0h-6v-1a6 6 0 0112 0v1z"/></svg>
-          Clients
-        </button>
-        <button onclick="app.navigate('services')" id="nav-services" class="sidebar-link w-full">
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/></svg>
-          Prestations
-        </button>
-      </nav>
-      <div class="p-4 border-t border-gray-100">
-        <div class="text-xs text-gray-400">Connecté en tant que</div>
-        <div class="text-sm font-medium text-gray-700 mt-1">Administrateur</div>
-      </div>
-    </aside>
+        <button onclick="toggleMobileSidebar(false)" class="text-gray-400 hover:text-gray-600 text-xl font-bold">✕</button>
+    </div>
+    <div class="flex-1 overflow-y-auto py-4" id="mobile-nav-container"></div>
+</aside>
 
-    <!-- Main -->
-    <main class="flex-1 flex flex-col overflow-hidden">
-      <!-- Header -->
-      <header class="h-16 bg-white border-b border-gray-100 flex items-center justify-between px-8 shrink-0">
-        <h1 id="page-title" class="text-lg font-semibold text-gray-900">Tableau de bord</h1>
-        <div class="flex items-center gap-4">
-          <button onclick="app.refreshCurrent()" class="btn-secondary flex items-center gap-2">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
-            Actualiser
-          </button>
+<div id="onboarding-modal" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 hide">
+    <div class="bg-white rounded-lg max-w-lg w-full google-shadow-md p-8">
+        <div class="flex justify-between items-center pb-4 border-b border-gray-200 mb-6">
+            <h3 class="text-lg font-medium text-gray-900">Bienvenue au Studio 739</h3>
+            <span class="text-xs text-gray-500 font-medium uppercase tracking-wider" id="onboarding-step-indicator">Étape 1 sur 3</span>
         </div>
-      </header>
+        <div id="onboarding-step-1">
+            <h4 class="font-medium text-gray-800 mb-2">Confirmer les informations de votre salon</h4>
+            <p class="text-sm text-gray-600 mb-4">Veuillez vérifier que l'adresse publique ainsi que le nom d'établissement affichés correspondent à la réalité de votre salon.</p>
+            <div class="space-y-3">
+                <div>
+                    <label class="block text-xs font-semibold text-gray-500 uppercase mb-1">Nom du salon</label>
+                    <input type="text" id="onboarding-nom" value="Studio 739" class="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:ring-1 focus:ring-blue-500 focus:outline-none">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-gray-500 uppercase mb-1">Adresse postale</label>
+                    <input type="text" id="onboarding-adresse" value="739 Avenue de la République, 75011 Paris" class="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:ring-1 focus:ring-blue-500 focus:outline-none">
+                </div>
+            </div>
+        </div>
+        <div id="onboarding-step-2" class="hide">
+            <h4 class="font-medium text-gray-800 mb-2">Vérifier l'adresse de réception</h4>
+            <p class="text-sm text-gray-600 mb-4">C'est sur cette adresse email que vous recevrez toutes les notifications de nouvelles réservations.</p>
+            <div class="mb-4">
+                <label class="block text-xs font-semibold text-gray-500 uppercase mb-1">Email de notification</label>
+                <input type="email" id="onboarding-email" value="contact@studio739.fr" class="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:ring-1 focus:ring-blue-500 focus:outline-none">
+            </div>
+            <div class="p-3 bg-blue-50 text-blue-800 rounded text-xs border border-blue-100">
+                Vous pouvez désactiver l'envoi d'emails de notification à tout moment dans les Paramètres système.
+            </div>
+        </div>
+        <div id="onboarding-step-3" class="hide">
+            <h4 class="font-medium text-gray-800 mb-2">Première réservation d'évaluation</h4>
+            <p class="text-sm text-gray-600 mb-4">Voici à quoi ressemblera une demande de rendez-vous client sur votre interface. Nous avons pré-généré une réservation fictive pour vous habituer à la console.</p>
+            <div class="border border-gray-200 rounded p-4 bg-gray-50 mb-4">
+                <div class="flex justify-between items-center mb-2">
+                    <span class="font-semibold text-gray-900 text-sm">Sophie Martin</span>
+                    <span class="status-badge status-pending">En attente</span>
+                </div>
+                <p class="text-xs text-gray-500 mb-1">Prestation : Coupe Femme - Mi-longs</p>
+                <p class="text-xs text-gray-500">Heure : Demain à 10:00 (Durée : 45 min)</p>
+            </div>
+        </div>
+        <div class="flex justify-between items-center mt-8 pt-4 border-t border-gray-200">
+            <button id="onboarding-back" class="px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded transition-colors disabled:opacity-50" disabled>Retour</button>
+            <button id="onboarding-next" class="px-5 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded transition-colors">Suivant</button>
+        </div>
+    </div>
+</div>
 
-      <!-- Alert / Error -->
-      <div id="alert-box" class="hidden mx-8 mt-4 px-4 py-3 bg-red-50 border border-red-100 rounded-lg text-sm text-red-700"></div>
+<div id="client-drawer" class="fixed inset-y-0 right-0 w-full sm:w-96 bg-white z-40 border-l border-gray-200 shadow-2xl transition-transform transform translate-x-full flex flex-col">
+    <div class="p-6 border-b border-gray-100 flex justify-between items-center shrink-0">
+        <h3 class="text-lg font-medium text-gray-900" id="drawer-client-name">Fiche Client</h3>
+        <button onclick="toggleClientDrawer(false)" class="text-gray-400 hover:text-gray-600 text-xl font-bold p-1">✕</button>
+    </div>
+    <div class="flex-1 overflow-y-auto p-6 space-y-6">
+        <div>
+            <h4 class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Coordonnées</h4>
+            <div class="space-y-2 text-sm text-gray-700">
+                <p><span class="text-gray-400">Téléphone :</span> <span id="drawer-client-phone">-</span></p>
+                <p><span class="text-gray-400">Email :</span> <span id="drawer-client-email">-</span></p>
+            </div>
+        </div>
+        <div>
+            <h4 class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Fidélité</h4>
+            <div class="flex items-center gap-2">
+                <span class="text-2xl font-bold text-blue-600" id="drawer-client-visits">0</span>
+                <span class="text-sm text-gray-500">visites au total</span>
+            </div>
+            <div id="drawer-client-vip" class="mt-2 inline-block px-2.5 py-0.5 bg-blue-50 text-blue-700 text-xs font-medium rounded border border-blue-100 hide">
+                Client régulier
+            </div>
+        </div>
+        <div>
+            <h4 class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Notes persistantes (Allergies, coupe)</h4>
+            <textarea id="drawer-client-notes" placeholder="Indiquer ici les allergies, préférences, types de cheveux..." class="w-full border border-gray-300 rounded p-2 text-xs h-24 focus:ring-1 focus:ring-blue-500 focus:outline-none bg-gray-50"></textarea>
+            <button onclick="saveClientNotes()" class="mt-2 px-3 py-1 text-xs bg-gray-800 text-white rounded hover:bg-gray-900">Enregistrer la note</button>
+        </div>
+        <div>
+            <h4 class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Historique des visites</h4>
+            <div class="space-y-3" id="drawer-client-history"></div>
+        </div>
+    </div>
+</div>
 
-      <!-- Content Scroll Area -->
-      <div id="content" class="flex-1 overflow-y-auto p-8">
-        <!-- Injected by JS -->
-      </div>
-    </main>
-  </div>
+<aside class="w-64 bg-white border-r border-gray-200 flex flex-col shrink-0 z-10 hidden md:flex">
+    <div class="p-6 border-b border-gray-100 flex items-center gap-3 shrink-0">
+        <div class="w-8 h-8 bg-blue-600 rounded flex items-center justify-center font-bold text-lg text-white">S</div>
+        <span class="text-lg font-medium tracking-tight text-gray-900">Studio 739</span>
+    </div>
+    <div class="flex-1 overflow-y-auto py-4">
+        <div class="px-5 py-2 text-xs font-semibold text-gray-400 uppercase tracking-wider">Activité</div>
+        <nav class="space-y-1 mb-6">
+            <button data-target="dashboard" class="nav-btn w-full flex items-center gap-3 px-5 py-2.5 text-sm text-gray-600 transition-all hover:bg-gray-50 active-nav">
+                <span class="nav-dot w-1.5 h-1.5 rounded-full bg-blue-600"></span>
+                Tableau de bord
+            </button>
+            <button data-target="reservations" class="nav-btn w-full flex items-center gap-3 px-5 py-2.5 text-sm text-gray-600 transition-all hover:bg-gray-50">
+                <span class="nav-dot w-1.5 h-1.5 rounded-full bg-transparent"></span>
+                Réservations
+            </button>
+            <button data-target="clients" class="nav-btn w-full flex items-center gap-3 px-5 py-2.5 text-sm text-gray-600 transition-all hover:bg-gray-50">
+                <span class="nav-dot w-1.5 h-1.5 rounded-full bg-transparent"></span>
+                CRM Clients
+            </button>
+        </nav>
 
-  <!-- ========== JAVASCRIPT ========== -->
-  <script>
-    // ==================== CONFIGURATION ====================
-    const CONFIG = {
-      // Remplacer par l'URL de la Web App Google Apps Script
-      API_URL: 'https://script.google.com/macros/s/YOUR_SCRIPT_ID/exec',
-      TOKEN: 'b739-studio-token-2026'
-    };
+        <div class="px-5 py-2 text-xs font-semibold text-gray-400 uppercase tracking-wider">Salon & Offre</div>
+        <nav class="space-y-1 mb-6">
+            <button data-target="services" class="nav-btn w-full flex items-center gap-3 px-5 py-2.5 text-sm text-gray-600 transition-all hover:bg-gray-50">
+                <span class="nav-dot w-1.5 h-1.5 rounded-full bg-transparent"></span>
+                Prestations
+            </button>
+            <button data-target="horaires" class="nav-btn w-full flex items-center gap-3 px-5 py-2.5 text-sm text-gray-600 transition-all hover:bg-gray-50">
+                <span class="nav-dot w-1.5 h-1.5 rounded-full bg-transparent"></span>
+                Horaires & Congés
+            </button>
+            <button data-target="presentation" class="nav-btn w-full flex items-center gap-3 px-5 py-2.5 text-sm text-gray-600 transition-all hover:bg-gray-50">
+                <span class="nav-dot w-1.5 h-1.5 rounded-full bg-transparent"></span>
+                Édition du Site
+            </button>
+            <button data-target="pratiques" class="nav-btn w-full flex items-center gap-3 px-5 py-2.5 text-sm text-gray-600 transition-all hover:bg-gray-50">
+                <span class="nav-dot w-1.5 h-1.5 rounded-full bg-transparent"></span>
+                Infos pratiques
+            </button>
+        </nav>
 
-    // ==================== STATE ====================
-    const state = {
-      view: 'dashboard',
-      loading: false,
-      stats: null,
-      reservations: [],
-      clients: [],
-      services: [],
-      filters: { reservations: '', clients: '' }
-    };
+        <div class="px-5 py-2 text-xs font-semibold text-gray-400 uppercase tracking-wider">Administration</div>
+        <nav class="space-y-1">
+            <button data-target="parametres" class="nav-btn w-full flex items-center gap-3 px-5 py-2.5 text-sm text-gray-600 transition-all hover:bg-gray-50">
+                <span class="nav-dot w-1.5 h-1.5 rounded-full bg-transparent"></span>
+                Paramètres du site
+            </button>
+            <button data-target="analytics" class="nav-btn w-full flex items-center gap-3 px-5 py-2.5 text-sm text-gray-600 transition-all hover:bg-gray-50">
+                <span class="nav-dot w-1.5 h-1.5 rounded-full bg-transparent"></span>
+                Statistiques avancées
+            </button>
+            <button data-target="compte" class="nav-btn w-full flex items-center gap-3 px-5 py-2.5 text-sm text-gray-600 transition-all hover:bg-gray-50">
+                <span class="nav-dot w-1.5 h-1.5 rounded-full bg-transparent"></span>
+                Mon compte
+            </button>
+            <button data-target="aide" class="nav-btn w-full flex items-center gap-3 px-5 py-2.5 text-sm text-gray-600 transition-all hover:bg-gray-50">
+                <span class="nav-dot w-1.5 h-1.5 rounded-full bg-transparent"></span>
+                Aide & Support
+            </button>
+        </nav>
+    </div>
+    <div class="p-4 border-t border-gray-100 flex flex-col gap-2 shrink-0">
+        <button onclick="triggerOnboarding()" class="w-full text-center px-4 py-2 text-xs font-medium text-blue-600 bg-blue-50 border border-blue-100 rounded hover:bg-blue-100 transition-colors">
+            Rejouer l'onboarding
+        </button>
+        <button onclick="handleLogout()" class="w-full text-left px-5 py-2 text-sm font-medium text-gray-500 hover:text-red-600 transition-colors hover:bg-red-50 rounded">
+            Se déconnecter
+        </button>
+    </div>
+</aside>
 
-    let charts = { line: null, doughnut: null };
+<main class="flex-1 flex flex-col h-screen overflow-hidden">
+    <header class="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-6 md:px-8 shrink-0 z-10">
+        <div class="flex items-center gap-3">
+            <button onclick="toggleMobileSidebar(true)" class="md:hidden p-2 hover:bg-gray-100 rounded-lg">
+                <div class="w-5 h-0.5 bg-gray-600 mb-1"></div>
+                <div class="w-5 h-0.5 bg-gray-600 mb-1"></div>
+                <div class="w-5 h-0.5 bg-gray-600"></div>
+            </button>
+            <h1 class="text-lg font-medium text-gray-900 capitalize" id="header-title">Tableau de bord</h1>
+        </div>
+        <div class="flex items-center gap-6">
+            <button onclick="app.refreshCurrent()" class="flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-100 rounded transition-colors">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                Actualiser
+            </button>
+            <div class="relative cursor-pointer hover:opacity-80 transition-opacity flex items-center">
+                <span class="text-xs uppercase tracking-wider text-gray-400 font-semibold mr-2">Alertes</span>
+                <span class="bg-blue-600 text-white text-xs font-bold px-2 py-0.5 rounded-full" id="notif-badge">0</span>
+            </div>
+            <div class="flex items-center gap-3 border-l border-gray-200 pl-4 md:pl-6 cursor-pointer hover:bg-gray-50 p-2 rounded transition-colors">
+                <div class="w-8 h-8 bg-blue-100 text-blue-700 rounded-full flex items-center justify-center font-semibold text-sm">L</div>
+                <div class="text-sm hidden sm:block">
+                    <p class="font-medium text-gray-800">Lorenzo</p>
+                    <p class="text-gray-500 text-xs">Administrateur</p>
+                </div>
+            </div>
+        </div>
+    </header>
 
-    // ==================== API ====================
-    async function apiGet(action) {
-      const url = `${CONFIG.API_URL}?action=${encodeURIComponent(action)}&token=${encodeURIComponent(CONFIG.TOKEN)}`;
-      const res = await fetch(url, { method: 'GET' });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      return res.json();
-    }
+    <div id="api-banner" class="hidden bg-amber-50 border-b border-amber-200 px-8 py-3 text-sm text-amber-800 flex items-center justify-between">
+        <span>⚠️ L'API n'est pas configurée. Remplacez <code>API_URL</code> dans le code par l'URL de votre Web App Google Apps Script.</span>
+        <button onclick="document.getElementById('api-banner').classList.add('hide')" class="text-amber-600 hover:text-amber-800 font-bold">✕</button>
+    </div>
 
-    async function apiPost(params) {
-      const body = new URLSearchParams({ ...params, token: CONFIG.TOKEN });
-      const res = await fetch(CONFIG.API_URL, {
+    <div class="flex-1 overflow-y-auto p-4 md:p-8" id="content-area">
+        <!-- sections injected below -->
+    </div>
+</main>
+
+<script>
+// ==================== CONFIGURATION ====================
+const CONFIG = {
+    API_URL: 'https://script.google.com/macros/s/YOUR_SCRIPT_ID/exec',
+    TOKEN: 'b739-studio-token-2026'
+};
+
+const isApiConfigured = !CONFIG.API_URL.includes('YOUR_SCRIPT_ID');
+
+// ==================== API ====================
+async function apiGet(action) {
+    const url = `${CONFIG.API_URL}?action=${encodeURIComponent(action)}&token=${encodeURIComponent(CONFIG.TOKEN)}`;
+    const res = await fetch(url, { method: 'GET' });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return res.json();
+}
+
+async function apiPost(params) {
+    const body = new URLSearchParams({ ...params, token: CONFIG.TOKEN });
+    const res = await fetch(CONFIG.API_URL, {
         method: 'POST',
         body: body.toString(),
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
-      });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      return res.json();
-    }
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return res.json();
+}
 
-    // ==================== UI HELPERS ====================
-    function showAlert(msg, type = 'error') {
-      const box = document.getElementById('alert-box');
-      box.textContent = msg;
-      box.className = `mx-8 mt-4 px-4 py-3 rounded-lg text-sm ${type === 'error' ? 'bg-red-50 border border-red-100 text-red-700' : 'bg-emerald-50 border border-emerald-100 text-emerald-700'}`;
-      box.classList.remove('hidden');
-      setTimeout(() => box.classList.add('hidden'), 5000);
-    }
+// ==================== DATA MAPPING ====================
+function mapReservations(apiRows) {
+    return (apiRows || []).map(r => ({
+        id: r.ID,
+        date: r.Date,
+        time: r.Heure,
+        client: `${r.Prénom || ''} ${r.Nom || ''}`.trim(),
+        phone: r.Téléphone,
+        email: r.Email,
+        service: r.Prestation,
+        notes: r.Notes,
+        status: r.Statut
+    }));
+}
 
-    function setLoading(v) {
-      state.loading = v;
-      const content = document.getElementById('content');
-      if (v) {
-        content.innerHTML = '<div class="flex items-center justify-center h-64"><div class="loading-spinner mr-3"></div><span class="text-gray-500 text-sm">Chargement...</span></div>';
-      }
-    }
+function mapClients(apiRows) {
+    return (apiRows || []).map(r => ({
+        id: r.ID,
+        name: r.Nom,
+        email: r.Email,
+        phone: r.Téléphone,
+        visits: parseInt(r.Visites) || 0,
+        lastVisit: r['Dernière visite'],
+        loyal: r.Fidélité === 'Régulier',
+        notes: r.Notes
+    }));
+}
 
-    function formatDate(d) {
-      if (!d) return '-';
-      try {
-        const date = new Date(d);
-        return date.toLocaleDateString('fr-FR');
-      } catch { return d; }
-    }
+function mapServices(apiRows) {
+    const grouped = {};
+    (apiRows || []).forEach(r => {
+        const cat = r.Catégorie || 'Autre';
+        if (!grouped[cat]) grouped[cat] = [];
+        grouped[cat].push({
+            id: r.ID,
+            name: r.Nom,
+            price: r.Prix,
+            duration: r.Durée,
+            visible: r.Visible === 'Oui'
+        });
+    });
+    return Object.entries(grouped).map(([category, items]) => ({ category, items }));
+}
 
-    function formatPrice(p) {
-      if (!p) return '-';
-      const n = parseInt(p.toString().replace(/[^0-9]/g, ''), 10);
-      return isNaN(n) ? p : n + ' €';
-    }
+// ==================== STATE ====================
+const state = {
+    view: 'dashboard',
+    loading: false,
+    stats: null,
+    reservations: [],
+    clients: [],
+    services: [],
+    config: {},
+    filters: { reservations: 'all', clients: '' }
+};
 
-    // ==================== NAVIGATION ====================
-    const app = {
-      navigate(view) {
+let charts = { line: null, doughnut: null };
+let currentOnboardingStep = 1;
+let currentOpenedClient = null;
+
+// ==================== UI HELPERS ====================
+function showNotification(msg) {
+    const n = document.createElement('div');
+    n.className = 'fixed bottom-4 left-1/2 -translate-x-1/2 bg-gray-900 text-white text-xs px-5 py-3 rounded google-shadow-md z-50 flex items-center gap-4 transition-all duration-300';
+    n.innerHTML = `<span>${msg}</span><button class="font-bold text-blue-400 pl-4 hover:text-white" onclick="this.parentElement.remove()">Fermer</button>`;
+    document.body.appendChild(n);
+    setTimeout(() => n.remove(), 4000);
+}
+
+function showApiBanner() {
+    if (!isApiConfigured) document.getElementById('api-banner').classList.remove('hide');
+}
+
+function formatDate(d) {
+    if (!d) return '-';
+    try { return new Date(d).toLocaleDateString('fr-FR'); } catch { return d; }
+}
+
+function setLoading(viewId) {
+    const area = document.getElementById(viewId || 'content-area');
+    if (area) area.innerHTML = '<div class="flex items-center justify-center h-64 gap-3"><div class="loading-spinner"></div><span class="text-gray-500 text-sm">Chargement...</span></div>';
+}
+
+// ==================== CONFIG HELPERS ====================
+async function loadConfigKey(key, fallback) {
+    if (!isApiConfigured) return fallback;
+    try {
+        const data = await apiGet('getConfig');
+        if (data.success && data.data[key]) {
+            try { return JSON.parse(data.data[key]); } catch { return data.data[key]; }
+        }
+    } catch (e) { console.warn('Config load error', e); }
+    return fallback;
+}
+
+async function saveConfigKey(key, value) {
+    if (!isApiConfigured) { showNotification('API non configurée — données sauvegardées localement.'); return; }
+    try {
+        const val = typeof value === 'string' ? value : JSON.stringify(value);
+        const res = await apiPost({ action: 'updateConfig', key, value: val });
+        if (res.success) showNotification('Modifications enregistrées.');
+        else showNotification('Erreur de sauvegarde.');
+    } catch (e) { showNotification('Erreur de connexion.'); }
+}
+
+// ==================== NAVIGATION ====================
+const app = {
+    navigate(view) {
         state.view = view;
-        document.querySelectorAll('.sidebar-link').forEach(el => el.classList.remove('active'));
-        document.getElementById('nav-' + view).classList.add('active');
-        const titles = { dashboard: 'Tableau de bord', reservations: 'Réservations', clients: 'Clients', services: 'Prestations' };
-        document.getElementById('page-title').textContent = titles[view];
+        document.querySelectorAll('.nav-btn').forEach(b => {
+            b.classList.remove('active-nav');
+            b.classList.add('text-gray-600', 'hover:bg-gray-50');
+            const dot = b.querySelector('.nav-dot');
+            if (dot) { dot.classList.remove('bg-blue-600'); dot.classList.add('bg-transparent'); }
+        });
+        document.querySelectorAll(`[data-target="${view}"]`).forEach(b => {
+            b.classList.add('active-nav');
+            b.classList.remove('text-gray-600', 'hover:bg-gray-50');
+            const dot = b.querySelector('.nav-dot');
+            if (dot) { dot.classList.add('bg-blue-600'); dot.classList.remove('bg-transparent'); }
+        });
+        const titles = {
+            dashboard: 'Tableau de bord', reservations: 'Réservations', clients: 'CRM Clients',
+            services: 'Prestations', horaires: 'Horaires & Congés', presentation: 'Édition du Site',
+            pratiques: 'Infos pratiques', parametres: 'Paramètres du site', analytics: 'Statistiques avancées',
+            compte: 'Mon compte', aide: 'Aide & Support'
+        };
+        document.getElementById('header-title').textContent = titles[view] || view;
         this.refreshCurrent();
-      },
-
-      async refreshCurrent() {
-        setLoading(true);
+    },
+    async refreshCurrent() {
+        const area = document.getElementById('content-area');
+        if (!area) return;
         try {
-          if (state.view === 'dashboard') await loadDashboard();
-          if (state.view === 'reservations') await loadReservations();
-          if (state.view === 'clients') await loadClients();
-          if (state.view === 'services') await loadServices();
+            if (state.view === 'dashboard') await loadDashboard(area);
+            else if (state.view === 'reservations') await loadReservations(area);
+            else if (state.view === 'clients') await loadClients(area);
+            else if (state.view === 'services') await loadServices(area);
+            else if (state.view === 'horaires') await loadHoraires(area);
+            else if (state.view === 'presentation') await loadPresentation(area);
+            else if (state.view === 'pratiques') await loadPratiques(area);
+            else if (state.view === 'parametres') await loadParametres(area);
+            else if (state.view === 'analytics') await loadAnalytics(area);
+            else if (state.view === 'compte') area.innerHTML = getCompteHTML();
+            else if (state.view === 'aide') area.innerHTML = getAideHTML();
         } catch (err) {
-          showAlert(err.message || 'Erreur de connexion API');
+            console.error(err);
+            area.innerHTML = `<div class="bg-red-50 border border-red-100 rounded p-4 text-sm text-red-700">Erreur : ${err.message}</div>`;
         }
-      }
+    }
+};
+
+function switchToTab(targetId) { app.navigate(targetId); }
+
+function buildMobileSidebar() {
+    const desktopAside = document.querySelector('aside.hidden');
+    const mobileNavContainer = document.getElementById('mobile-nav-container');
+    if (desktopAside && mobileNavContainer) {
+        mobileNavContainer.innerHTML = desktopAside.querySelector('.flex-1').innerHTML;
+        mobileNavContainer.querySelectorAll('.nav-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => { switchToTab(e.currentTarget.getAttribute('data-target')); toggleMobileSidebar(false); });
+        });
+    }
+}
+
+function toggleMobileSidebar(open) {
+    const sidebar = document.getElementById('mobile-sidebar');
+    const overlay = document.getElementById('mobile-sidebar-overlay');
+    if (!sidebar || !overlay) return;
+    if (open) { sidebar.classList.remove('-translate-x-full'); overlay.classList.remove('hidden'); }
+    else { sidebar.classList.add('-translate-x-full'); overlay.classList.add('hidden'); }
+}
+
+// ==================== DASHBOARD ====================
+async function loadDashboard(container) {
+    let statsData;
+    if (isApiConfigured) {
+        const data = await apiGet('getStats');
+        if (!data.success) throw new Error(data.error);
+        statsData = data;
+    } else {
+        statsData = {
+            stats: { totalReservations: 0, pending: 0, revenue: 0, confirmationRate: 0 },
+            chartData: { lineLabels: ['Lun','Mar','Mer','Jeu','Ven','Sam','Dim'], lineValues: [0,0,0,0,0,0,0], doughnutLabels: ['Aucune'], doughnutValues: [1] }
+        };
+    }
+    state.stats = statsData;
+    const s = statsData.stats;
+    const c = statsData.chartData;
+
+    container.innerHTML = `
+        <div class="mb-8"><h2 class="text-xl font-medium text-gray-900 mb-1">Activité générale du salon</h2><p class="text-gray-500 text-sm">Consultez les KPIs clés et les analyses d'acquisition clients.</p></div>
+        ${s.pending > 0 ? `<div class="bg-amber-50 border-l-4 border-amber-500 p-4 rounded-r mb-8 flex items-start gap-4">
+            <div class="w-2 h-2 rounded-full bg-amber-500 mt-2 shrink-0"></div>
+            <div class="flex-1">
+                <h3 class="font-medium text-amber-900 text-sm">Action de gestion requise</h3>
+                <p class="text-amber-700 text-sm mt-1">Vous avez <strong>${s.pending}</strong> demande(s) en attente d'approbation.</p>
+                <button class="mt-3 bg-amber-600 hover:bg-amber-700 text-white px-4 py-2 rounded text-xs font-medium transition-colors" onclick="switchToTab('reservations')">Consulter les dossiers</button>
+            </div>
+        </div>` : ''}
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 md:gap-6 mb-8">
+            <div class="bg-white p-6 rounded-lg border border-gray-200 hover:border-gray-300 transition-colors"><p class="text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">Réservations du mois</p><p class="text-2xl font-bold text-gray-900">${s.totalReservations}</p></div>
+            <div class="bg-white p-6 rounded-lg border border-amber-200 bg-amber-50/20"><p class="text-xs font-medium text-amber-800 uppercase tracking-wider mb-2">En attente</p><p class="text-2xl font-bold text-amber-700">${s.pending}</p></div>
+            <div class="bg-white p-6 rounded-lg border border-gray-200 hover:border-gray-300 transition-colors"><p class="text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">Chiffre d'affaires estimé</p><p class="text-2xl font-bold text-green-700">${s.revenue} €</p></div>
+            <div class="bg-white p-6 rounded-lg border border-gray-200 hover:border-gray-300 transition-colors"><p class="text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">Taux de validation</p><p class="text-2xl font-bold text-gray-900">${s.confirmationRate}%</p></div>
+            <div class="bg-white p-6 rounded-lg border border-gray-200 hover:border-gray-300 transition-colors"><p class="text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">Nouveaux clients</p><p class="text-2xl font-bold text-blue-600">${state.clients.length}</p></div>
+        </div>
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8 mb-8">
+            <div class="bg-white p-6 rounded-lg border border-gray-200 flex flex-col lg:col-span-2">
+                <h3 class="text-sm font-semibold text-gray-900 uppercase tracking-wider mb-4">Volume hebdomadaire</h3>
+                <div class="chart-container flex-1"><canvas id="lineChart"></canvas></div>
+            </div>
+            <div class="bg-white p-6 rounded-lg border border-gray-200 flex flex-col">
+                <h3 class="text-sm font-semibold text-gray-900 uppercase tracking-wider mb-4">Top prestations réservées</h3>
+                <div class="chart-container flex-1"><canvas id="doughnutChart"></canvas></div>
+            </div>
+        </div>
+        <div class="bg-white p-6 rounded-lg border border-gray-200">
+            <h3 class="text-sm font-semibold text-gray-900 uppercase tracking-wider mb-4">Actions rapides</h3>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <button onclick="switchToTab('reservations')" class="border border-gray-300 rounded p-4 text-left hover:bg-gray-50 transition-colors"><p class="font-medium text-gray-800 text-sm">Confirmer mes dossiers en attente</p><p class="text-xs text-gray-500 mt-1">Gérer les demandes bloquantes</p></button>
+                <button onclick="switchToTab('services')" class="border border-gray-300 rounded p-4 text-left hover:bg-gray-50 transition-colors"><p class="font-medium text-gray-800 text-sm">Modifier mes tarifs & prestations</p><p class="text-xs text-gray-500 mt-1">Mettre à jour le catalogue vitrine</p></button>
+                <button onclick="switchToTab('horaires')" class="border border-gray-300 rounded p-4 text-left hover:bg-gray-50 transition-colors"><p class="font-medium text-gray-800 text-sm">Ajouter un congé ou exception</p><p class="text-xs text-gray-500 mt-1">Gérer les indisponibilités</p></button>
+            </div>
+        </div>
+    `;
+
+    requestAnimationFrame(() => renderCharts(c));
+}
+
+function renderCharts(chartData) {
+    const common = {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, font: { family: "'Roboto',sans-serif", size: 11 } } },
+            tooltip: { backgroundColor: 'rgba(32,33,36,0.95)', titleFont: { size: 12 }, bodyFont: { size: 12 }, padding: 12, cornerRadius: 4 } }
     };
-
-    // ==================== DASHBOARD ====================
-    async function loadDashboard() {
-      const data = await apiGet('getStats');
-      if (!data.success) throw new Error(data.error || 'Erreur stats');
-      state.stats = data;
-      renderDashboard();
+    const ctxLine = document.getElementById('lineChart');
+    if (ctxLine) {
+        if (charts.line) charts.line.destroy();
+        charts.line = new Chart(ctxLine, {
+            type: 'line', data: {
+                labels: chartData.lineLabels,
+                datasets: [{ label: 'Rendez-vous', data: chartData.lineValues, borderColor: '#1a73e8', backgroundColor: 'rgba(26,115,232,0.04)', borderWidth: 2, tension: 0.3, fill: true, pointBackgroundColor: '#1a73e8' }]
+            }, options: { ...common, scales: { y: { beginAtZero: true, grid: { color: '#f1f3f4' } }, x: { grid: { display: false } } } }
+        });
     }
+    const ctxDoughnut = document.getElementById('doughnutChart');
+    if (ctxDoughnut) {
+        if (charts.doughnut) charts.doughnut.destroy();
+        charts.doughnut = new Chart(ctxDoughnut, {
+            type: 'doughnut', data: {
+                labels: chartData.doughnutLabels,
+                datasets: [{ data: chartData.doughnutValues, backgroundColor: ['#1a73e8','#12b5cb','#fbbc05','#34a853','#ea4335'], borderWidth: 0 }]
+            }, options: { ...common, cutout: '70%' }
+        });
+    }
+}
 
-    function renderDashboard() {
-      const s = state.stats.stats;
-      const c = state.stats.chartData;
-      const html = `
-        <div class="fade-in space-y-6">
-          <!-- KPI Cards -->
-          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div class="card p-5">
-              <div class="text-xs text-gray-500 uppercase tracking-wide">Réservations ce mois</div>
-              <div class="text-2xl font-bold text-gray-900 mt-1">${s.totalReservations}</div>
-            </div>
-            <div class="card p-5">
-              <div class="text-xs text-gray-500 uppercase tracking-wide">En attente</div>
-              <div class="text-2xl font-bold text-amber-600 mt-1">${s.pending}</div>
-            </div>
-            <div class="card p-5">
-              <div class="text-xs text-gray-500 uppercase tracking-wide">Chiffre d'affaires</div>
-              <div class="text-2xl font-bold text-teal-600 mt-1">${s.revenue} €</div>
-            </div>
-            <div class="card p-5">
-              <div class="text-xs text-gray-500 uppercase tracking-wide">Taux confirmation</div>
-              <div class="text-2xl font-bold text-emerald-600 mt-1">${s.confirmationRate}%</div>
-            </div>
-          </div>
+// ==================== RESERVATIONS ====================
+async function loadReservations(container) {
+    if (isApiConfigured) {
+        const data = await apiGet('getReservations');
+        if (data.success) state.reservations = mapReservations(data.data);
+    }
+    renderReservationsUI(container);
+}
 
-          <!-- Charts -->
-          <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <div class="card p-5">
-              <h3 class="text-sm font-semibold text-gray-900 mb-4">Évolution sur 7 jours</h3>
-              <canvas id="chart-line" height="200"></canvas>
+function renderReservationsUI(container) {
+    const filter = state.filters.reservations;
+    let rows = state.reservations;
+    if (filter !== 'all') rows = rows.filter(r => r.status === filter);
+
+    const pendingCount = state.reservations.filter(r => r.status === 'pending').length;
+    document.getElementById('notif-badge').textContent = pendingCount;
+
+    container.innerHTML = `
+        <div class="mb-6"><h2 class="text-xl font-medium text-gray-900 mb-1">Suivi des rendez-vous</h2><p class="text-gray-500 text-sm">Visualisez, filtrez, acceptez ou annulez les demandes.</p></div>
+        <div class="bg-white border border-gray-200 rounded-lg overflow-hidden flex flex-col">
+            <div class="p-4 border-b border-gray-200 bg-gray-50 flex flex-col sm:flex-row justify-between items-center gap-4">
+                <div class="flex gap-2 overflow-x-auto w-full sm:w-auto pb-2 sm:pb-0">
+                    ${['all','pending','confirmed','completed','cancelled'].map(f => {
+                        const active = filter === f;
+                        const labels = {all:'Toutes',pending:'En attente',confirmed:'Confirmées',completed:'Terminées',cancelled:'Annulées'};
+                        return `<button onclick="setResFilter('${f}')" class="px-4 py-1.5 rounded-full text-xs font-medium ${active ? 'bg-gray-800 text-white shadow-sm' : 'text-gray-600 hover:bg-gray-200'} transition-colors">${labels[f]}</button>`;
+                    }).join('')}
+                </div>
+                <input type="text" id="search-reservation" placeholder="Rechercher..." class="pl-4 pr-4 py-2 border border-gray-300 rounded-full text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 w-full sm:w-64 bg-white">
             </div>
-            <div class="card p-5">
-              <h3 class="text-sm font-semibold text-gray-900 mb-4">Top prestations</h3>
-              <canvas id="chart-doughnut" height="200"></canvas>
+            <div class="overflow-x-auto">
+                <table class="w-full text-xs text-left whitespace-nowrap">
+                    <thead class="bg-gray-100 text-gray-600 font-semibold border-b border-gray-200"><tr>
+                        <th class="px-6 py-4">Date & Heure</th><th class="px-6 py-4">Client</th><th class="px-6 py-4">Contact</th>
+                        <th class="px-6 py-4">Prestation</th><th class="px-6 py-4">Statut</th><th class="px-6 py-4 text-right">Actions</th>
+                    </tr></thead>
+                    <tbody id="reservations-body" class="divide-y divide-gray-100">
+                        ${rows.length === 0 ? '<tr><td colspan="6" class="text-center text-gray-400 py-8">Aucune réservation</td></tr>' : ''}
+                        ${rows.map(res => {
+                            let actions = '';
+                            if (res.status === 'pending') actions = `<button onclick="changeResStatus('${res.id}','confirmed')" class="px-2.5 py-1 text-xs font-semibold text-green-700 bg-green-50 border border-green-200 rounded hover:bg-green-100">Valider</button> <button onclick="changeResStatus('${res.id}','cancelled')" class="px-2.5 py-1 text-xs font-semibold text-red-600 bg-red-50 border border-red-200 rounded hover:bg-red-100">Décliner</button>`;
+                            else if (res.status === 'confirmed') actions = `<button onclick="changeResStatus('${res.id}','completed')" class="px-2.5 py-1 text-xs font-semibold text-blue-700 bg-blue-50 border border-blue-200 rounded hover:bg-blue-100">Marquer Terminé</button>`;
+                            return `<tr class="hover:bg-gray-50/50 transition-colors group">
+                                <td class="px-6 py-4"><div class="font-semibold text-gray-900">${res.date}</div><div class="text-gray-500">${res.time}</div></td>
+                                <td class="px-6 py-4 font-semibold text-gray-800">${res.client}</td>
+                                <td class="px-6 py-4"><div class="text-gray-800">${res.phone}</div><div class="text-gray-400">${res.email}</div></td>
+                                <td class="px-6 py-4 text-gray-700 font-medium">${res.service}</td>
+                                <td class="px-6 py-4">${getStatusBadge(res.status)}</td>
+                                <td class="px-6 py-4 text-right"><div class="flex justify-end gap-1.5 ${actions ? 'opacity-0 group-hover:opacity-100 transition-opacity' : ''}">${actions}</div></td>
+                            </tr>`;
+                        }).join('')}
+                    </tbody>
+                </table>
             </div>
-          </div>
+            <div class="p-4 border-t border-gray-200 bg-gray-50 text-center text-xs text-gray-500 font-medium">Affichage de ${rows.length} dossier(s)</div>
         </div>
-      `;
-      document.getElementById('content').innerHTML = html;
+    `;
 
-      // Line chart
-      const ctxLine = document.getElementById('chart-line').getContext('2d');
-      if (charts.line) charts.line.destroy();
-      charts.line = new Chart(ctxLine, {
-        type: 'line',
-        data: {
-          labels: c.lineLabels,
-          datasets: [{
-            label: 'Réservations',
-            data: c.lineValues,
-            borderColor: '#2f7384',
-            backgroundColor: 'rgba(47,115,132,0.1)',
-            fill: true,
-            tension: 0.4,
-            pointRadius: 4,
-            pointBackgroundColor: '#2f7384'
-          }]
-        },
-        options: {
-          responsive: true,
-          plugins: { legend: { display: false } },
-          scales: {
-            y: { beginAtZero: true, grid: { color: '#f3f4f6' } },
-            x: { grid: { display: false } }
-          }
-        }
-      });
-
-      // Doughnut chart
-      const ctxDoughnut = document.getElementById('chart-doughnut').getContext('2d');
-      if (charts.doughnut) charts.doughnut.destroy();
-      charts.doughnut = new Chart(ctxDoughnut, {
-        type: 'doughnut',
-        data: {
-          labels: c.doughnutLabels,
-          datasets: [{
-            data: c.doughnutValues,
-            backgroundColor: ['#2f7384', '#87c5d4', '#15343c', '#e5e7eb', '#f3f4f6'],
-            borderWidth: 0
-          }]
-        },
-        options: {
-          responsive: true,
-          cutout: '65%',
-          plugins: {
-            legend: { position: 'bottom', labels: { usePointStyle: true, padding: 16 } }
-          }
-        }
-      });
+    const searchInput = document.getElementById('search-reservation');
+    if (searchInput) {
+        searchInput.addEventListener('input', (e) => {
+            const term = e.target.value.toLowerCase();
+            const filtered = state.reservations.filter(r =>
+                r.client.toLowerCase().includes(term) || r.phone.includes(term) || r.email.toLowerCase().includes(term)
+            );
+            const tbody = document.getElementById('reservations-body');
+            tbody.innerHTML = filtered.map(res => {
+                let actions = '';
+                if (res.status === 'pending') actions = `<button onclick="changeResStatus('${res.id}','confirmed')" class="px-2.5 py-1 text-xs font-semibold text-green-700 bg-green-50 border border-green-200 rounded hover:bg-green-100">Valider</button> <button onclick="changeResStatus('${res.id}','cancelled')" class="px-2.5 py-1 text-xs font-semibold text-red-600 bg-red-50 border border-red-200 rounded hover:bg-red-100">Décliner</button>`;
+                else if (res.status === 'confirmed') actions = `<button onclick="changeResStatus('${res.id}','completed')" class="px-2.5 py-1 text-xs font-semibold text-blue-700 bg-blue-50 border border-blue-200 rounded hover:bg-blue-100">Marquer Terminé</button>`;
+                return `<tr class="hover:bg-gray-50/50 transition-colors group">
+                    <td class="px-6 py-4"><div class="font-semibold text-gray-900">${res.date}</div><div class="text-gray-500">${res.time}</div></td>
+                    <td class="px-6 py-4 font-semibold text-gray-800">${res.client}</td>
+                    <td class="px-6 py-4"><div class="text-gray-800">${res.phone}</div><div class="text-gray-400">${res.email}</div></td>
+                    <td class="px-6 py-4 text-gray-700 font-medium">${res.service}</td>
+                    <td class="px-6 py-4">${getStatusBadge(res.status)}</td>
+                    <td class="px-6 py-4 text-right"><div class="flex justify-end gap-1.5 ${actions ? 'opacity-0 group-hover:opacity-100 transition-opacity' : ''}">${actions}</div></td>
+                </tr>`;
+            }).join('') || '<tr><td colspan="6" class="text-center text-gray-400 py-8">Aucun résultat</td></tr>';
+        });
     }
+}
 
-    // ==================== RESERVATIONS ====================
-    async function loadReservations() {
-      const data = await apiGet('getReservations');
-      if (!data.success) throw new Error(data.error);
-      state.reservations = data.data || [];
-      renderReservations();
+function setResFilter(f) { state.filters.reservations = f; app.refreshCurrent(); }
+
+function getStatusBadge(status) {
+    const labels = { pending: 'En attente', confirmed: 'Confirmé', completed: 'Terminé', cancelled: 'Annulé' };
+    return `<span class="status-badge status-${status}">${labels[status] || status}</span>`;
+}
+
+async function changeResStatus(id, newStatus) {
+    if (!isApiConfigured) { showNotification('API non configurée.'); return; }
+    const res = state.reservations.find(r => r.id === id);
+    if (!res) return;
+    if (newStatus === 'cancelled' && !confirm('Annuler cette réservation ?')) return;
+    try {
+        const result = await apiPost({ action: 'updateReservation', id, field: 'Statut', value: newStatus });
+        if (result.success) {
+            res.status = newStatus;
+            if (newStatus === 'completed') {
+                const client = state.clients.find(c => c.email === res.email || c.name === res.client);
+                if (client) client.visits++;
+            }
+            showNotification(`Statut mis à jour : ${getStatusBadge(newStatus).replace(/<[^>]*>/g, '')}`);
+            app.refreshCurrent();
+        } else showNotification(result.error || 'Erreur');
+    } catch (e) { showNotification('Erreur de connexion'); }
+}
+
+// ==================== CLIENTS ====================
+async function loadClients(container) {
+    if (isApiConfigured) {
+        const data = await apiGet('getClients');
+        if (data.success) state.clients = mapClients(data.data);
     }
+    renderClientsUI(container);
+}
 
-    function renderReservations() {
-      const filter = state.filters.reservations.toLowerCase();
-      const rows = state.reservations.filter(r => {
-        const text = `${r.Prénom} ${r.Nom} ${r.Email} ${r.Prestation} ${r.Statut}`.toLowerCase();
-        return text.includes(filter);
-      }).sort((a, b) => new Date(b.Timestamp || 0) - new Date(a.Timestamp || 0));
+function renderClientsUI(container) {
+    const term = state.filters.clients.toLowerCase();
+    let rows = state.clients;
+    if (term) rows = rows.filter(c => c.name.toLowerCase().includes(term));
 
-      const html = `
-        <div class="fade-in space-y-4">
-          <div class="flex items-center justify-between">
-            <input type="text" placeholder="Rechercher..." value="${state.filters.reservations}"
-              oninput="state.filters.reservations=this.value; renderReservations();"
-              class="w-72">
-            <div class="flex gap-2">
-              <button onclick="filterReservations('all')" class="btn-secondary text-xs">Tous</button>
-              <button onclick="filterReservations('pending')" class="btn-secondary text-xs">En attente</button>
-              <button onclick="filterReservations('confirmed')" class="btn-secondary text-xs">Confirmés</button>
+    container.innerHTML = `
+        <div class="mb-6 flex justify-between items-center">
+            <div><h2 class="text-xl font-medium text-gray-900 mb-1">CRM Clientèle</h2><p class="text-gray-500 text-sm">Gestion des fiches individuelles et des préférences.</p></div>
+            <button onclick="exportCSV()" class="bg-gray-800 hover:bg-gray-900 text-white px-4 py-2 rounded text-xs font-medium transition-colors">Exporter au format CSV</button>
+        </div>
+        <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
+            <div class="p-4 border-b border-gray-200 bg-gray-50">
+                <input type="text" id="search-client" placeholder="Filtrer par nom..." class="px-4 py-2 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 w-full sm:w-64 bg-white">
             </div>
-          </div>
-          <div class="card table-container">
-            <table class="data-table">
-              <thead><tr>
-                <th>Date</th><th>Heure</th><th>Client</th><th>Prestation</th><th>Statut</th><th>Téléphone</th><th>Actions</th>
-              </tr></thead>
-              <tbody>
-                ${rows.length === 0 ? '<tr><td colspan="7" class="text-center text-gray-400 py-8">Aucune réservation</td></tr>' : ''}
-                ${rows.map(r => `
-                  <tr>
-                    <td>${formatDate(r.Date)}</td>
-                    <td>${r.Heure || '-'}</td>
-                    <td class="font-medium text-gray-900">${r.Prénom || ''} ${r.Nom || ''}</td>
-                    <td>${r.Prestation || '-'}</td>
-                    <td><span class="status-badge status-${r.Statut || 'pending'}">${statusLabel(r.Statut)}</span></td>
-                    <td>${r.Téléphone || '-'}</td>
-                    <td>
-                      <div class="flex gap-2">
-                        ${r.Statut === 'pending' ? `<button onclick="setReservationStatus('${r.ID}','confirmed')" class="btn-success text-xs">Confirmer</button>` : ''}
-                        ${r.Statut !== 'cancelled' ? `<button onclick="setReservationStatus('${r.ID}','cancelled')" class="btn-danger text-xs">Annuler</button>` : ''}
-                        <button onclick="setReservationStatus('${r.ID}','completed')" class="btn-secondary text-xs">Terminer</button>
-                      </div>
-                    </td>
-                  </tr>
-                `).join('')}
-              </tbody>
-            </table>
-          </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-xs text-left whitespace-nowrap">
+                    <thead class="bg-gray-100 text-gray-600 font-semibold border-b border-gray-200"><tr>
+                        <th class="px-6 py-4">Nom</th><th class="px-6 py-4">Email</th><th class="px-6 py-4 text-center">Visites</th>
+                        <th class="px-6 py-4">Dernier passage</th><th class="px-6 py-4 text-right">Fiche</th>
+                    </tr></thead>
+                    <tbody id="clients-body" class="divide-y divide-gray-100">
+                        ${rows.length === 0 ? '<tr><td colspan="5" class="text-center text-gray-400 py-8">Aucun client</td></tr>' : ''}
+                        ${rows.map(c => `<tr class="hover:bg-gray-50/50 transition-colors">
+                            <td class="px-6 py-4 font-semibold text-gray-900">${c.name}</td>
+                            <td class="px-6 py-4 text-gray-600">${c.email}</td>
+                            <td class="px-6 py-4 text-center"><span class="inline-flex items-center justify-center w-7 h-7 bg-gray-100 rounded-full text-gray-800 font-semibold border border-gray-200">${c.visits}</span></td>
+                            <td class="px-6 py-4 text-gray-600">${formatDate(c.lastVisit)}</td>
+                            <td class="px-6 py-4 text-right"><button onclick="toggleClientDrawer(true,'${c.id}')" class="text-blue-600 hover:text-blue-800 font-semibold">Ouvrir la fiche</button></td>
+                        </tr>`).join('')}
+                    </tbody>
+                </table>
+            </div>
         </div>
-      `;
-      document.getElementById('content').innerHTML = html;
-    }
+    `;
 
-    function statusLabel(s) {
-      return { pending: 'En attente', confirmed: 'Confirmé', completed: 'Terminé', cancelled: 'Annulé' }[s] || s;
+    const searchInput = document.getElementById('search-client');
+    if (searchInput) {
+        searchInput.addEventListener('input', (e) => {
+            state.filters.clients = e.target.value;
+            app.refreshCurrent();
+        });
     }
+}
 
-    function filterReservations(status) {
-      if (status === 'all') { state.filters.reservations = ''; }
-      else { state.filters.reservations = status; }
-      renderReservations();
-    }
-
-    async function setReservationStatus(id, status) {
-      if (!confirm(`Changer le statut en "${statusLabel(status)}" ?`)) return;
-      try {
-        const res = await apiPost({ action: 'updateReservation', id, field: 'Statut', value: status });
-        if (res.success) {
-          showAlert('Statut mis à jour', 'success');
-          await loadReservations();
-        } else {
-          showAlert(res.error || 'Erreur');
+function toggleClientDrawer(open, clientId) {
+    const drawer = document.getElementById('client-drawer');
+    if (!drawer) return;
+    if (open && clientId) {
+        currentOpenedClient = state.clients.find(c => c.id === clientId);
+        if (currentOpenedClient) {
+            document.getElementById('drawer-client-name').textContent = currentOpenedClient.name;
+            document.getElementById('drawer-client-phone').textContent = currentOpenedClient.phone || '-';
+            document.getElementById('drawer-client-email').textContent = currentOpenedClient.email || '-';
+            document.getElementById('drawer-client-visits').textContent = currentOpenedClient.visits;
+            document.getElementById('drawer-client-notes').value = currentOpenedClient.notes || '';
+            const vipNode = document.getElementById('drawer-client-vip');
+            if (vipNode) vipNode.classList.toggle('hide', !currentOpenedClient.loyal);
+            const hist = document.getElementById('drawer-client-history');
+            const matches = state.reservations.filter(r => r.email === currentOpenedClient.email || r.client === currentOpenedClient.name);
+            hist.innerHTML = matches.length === 0 ? '<p class="text-xs text-gray-400">Aucune prestation passée.</p>' :
+                matches.map(res => `<div class="p-3 bg-gray-50 rounded border border-gray-100 text-xs">
+                    <div class="flex justify-between items-center mb-1"><span class="font-medium text-gray-800">${res.service}</span><span class="text-gray-400">${res.date}</span></div>
+                    <p class="text-gray-500 font-medium">Statut : ${res.status.toUpperCase()}</p>
+                </div>`).join('');
+            drawer.classList.remove('translate-x-full');
         }
-      } catch (err) { showAlert(err.message); }
+    } else {
+        drawer.classList.add('translate-x-full');
     }
+}
 
-    // ==================== CLIENTS ====================
-    async function loadClients() {
-      const data = await apiGet('getClients');
-      if (!data.success) throw new Error(data.error);
-      state.clients = data.data || [];
-      renderClients();
+async function saveClientNotes() {
+    if (!currentOpenedClient) return;
+    const notes = document.getElementById('drawer-client-notes').value;
+    currentOpenedClient.notes = notes;
+    if (isApiConfigured) {
+        try {
+            await apiPost({ action: 'updateClient', id: currentOpenedClient.id, field: 'Notes', value: notes });
+        } catch (e) { console.warn('API save notes failed', e); }
     }
+    showNotification('Notes client sauvegardées.');
+}
 
-    function renderClients() {
-      const filter = state.filters.clients.toLowerCase();
-      const rows = state.clients.filter(c => {
-        const text = `${c.Nom} ${c.Email} ${c.Téléphone} ${c.Fidélité}`.toLowerCase();
-        return text.includes(filter);
-      });
+function exportCSV() {
+    let csv = "data:text/csv;charset=utf-8,Nom,Email,Telephone,Visites,Derniere Passage,Notes\r\n";
+    state.clients.forEach(c => {
+        csv += [c.name, c.email, c.phone, c.visits, formatDate(c.lastVisit), (c.notes||'').replace(/"/g,'""')].map(v => `"${v}"`).join(",") + "\r\n";
+    });
+    const link = document.createElement("a");
+    link.href = encodeURI(csv); link.download = "base_clients_studio739.csv"; document.body.appendChild(link); link.click(); link.remove();
+    showNotification('CSV téléchargé.');
+}
 
-      const html = `
-        <div class="fade-in space-y-4">
-          <div class="flex items-center justify-between">
-            <input type="text" placeholder="Rechercher un client..." value="${state.filters.clients}"
-              oninput="state.filters.clients=this.value; renderClients();" class="w-72">
-            <button onclick="openAddClient()" class="btn-primary">+ Nouveau client</button>
-          </div>
-          <div class="card table-container">
-            <table class="data-table">
-              <thead><tr>
-                <th>Nom</th><th>Email</th><th>Téléphone</th><th>Visites</th><th>Dernière visite</th><th>Fidélité</th><th>Notes</th>
-              </tr></thead>
-              <tbody>
-                ${rows.length === 0 ? '<tr><td colspan="7" class="text-center text-gray-400 py-8">Aucun client</td></tr>' : ''}
-                ${rows.map(c => `
-                  <tr>
-                    <td class="font-medium text-gray-900">${c.Nom || '-'}</td>
-                    <td>${c.Email || '-'}</td>
-                    <td>${c.Téléphone || '-'}</td>
-                    <td class="text-center">${c.Visites || 0}</td>
-                    <td>${formatDate(c['Dernière visite'])}</td>
-                    <td><span class="status-badge ${c.Fidélité === 'Régulier' ? 'status-confirmed' : 'bg-gray-100 text-gray-600'}">${c.Fidélité || '-'}</span></td>
-                    <td class="text-gray-500 max-w-xs truncate">${c.Notes || '-'}</td>
-                  </tr>
-                `).join('')}
-              </tbody>
-            </table>
-          </div>
+// ==================== SERVICES ====================
+async function loadServices(container) {
+    if (isApiConfigured) {
+        const data = await apiGet('getServices');
+        if (data.success) state.services = mapServices(data.data);
+    }
+    renderServicesUI(container);
+}
+
+function renderServicesUI(container) {
+    container.innerHTML = `
+        <div class="mb-6 flex justify-between items-end">
+            <div><h2 class="text-xl font-medium text-gray-900 mb-1">Catalogue des prestations</h2><p class="text-gray-500 text-sm">Ajoutez des prestations et ajustez la tarification.</p></div>
+            <button onclick="addServicePrompt()" class="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded text-xs font-medium shadow-sm transition-colors">Ajouter une prestation</button>
         </div>
-        <div id="modal-client" class="hidden fixed inset-0 bg-black/30 flex items-center justify-center z-50">
-          <div class="bg-white rounded-xl p-6 w-full max-w-md shadow-xl">
-            <h3 class="text-lg font-semibold mb-4">Nouveau client</h3>
+        <div id="services-container" class="space-y-6">
+            ${state.services.length === 0 ? '<div class="bg-white border border-gray-200 rounded p-8 text-center text-gray-400 text-sm">Aucune prestation</div>' : ''}
+            ${state.services.map(cat => `
+                <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
+                    <div class="bg-gray-50 px-6 py-4 border-b border-gray-200 flex justify-between items-center">
+                        <h3 class="font-medium text-gray-800 text-sm tracking-wide uppercase">${cat.category}</h3>
+                    </div>
+                    <div class="divide-y divide-gray-100">
+                        ${cat.items.map(item => `
+                            <div class="px-6 py-4 flex flex-col sm:flex-row justify-between sm:items-center hover:bg-gray-50/50 transition-colors gap-4">
+                                <div>
+                                    <h4 class="font-semibold text-gray-900">${item.name}</h4>
+                                    <p class="text-xs text-gray-500 mt-1 flex gap-4"><span>Durée : ${item.duration}</span><span class="text-green-700 font-semibold">Prix : ${item.price}</span></p>
+                                </div>
+                                <div class="flex gap-2">
+                                    <button onclick="toggleServiceVisibility('${item.id}','${item.visible ? 'Non' : 'Oui'}')" class="px-3 py-1.5 text-xs font-semibold ${item.visible ? 'text-gray-700 bg-white border border-gray-300' : 'text-green-700 bg-green-50 border border-green-200'} rounded hover:bg-gray-50 transition-colors">${item.visible ? 'Masquer' : 'Afficher'}</button>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `).join('')}
+        </div>
+    `;
+}
+
+async function toggleServiceVisibility(id, newValue) {
+    if (!isApiConfigured) { showNotification('API non configurée.'); return; }
+    try {
+        const res = await apiPost({ action: 'updateService', id, field: 'Visible', value: newValue });
+        if (res.success) { showNotification('Visibilité mise à jour.'); app.refreshCurrent(); }
+        else showNotification(res.error || 'Erreur');
+    } catch (e) { showNotification('Erreur de connexion'); }
+}
+
+async function addServicePrompt() {
+    const name = prompt('Nom de la prestation :');
+    if (!name) return;
+    const price = prompt('Prix (ex: 45€) :');
+    const duration = prompt('Durée (ex: 45 min) :');
+    const category = prompt('Catégorie (ex: Coupes) :') || 'Général';
+    if (isApiConfigured) {
+        try {
+            const res = await apiPost({ action: 'addService', categorie: category, nom: name, prix: price || '', duree: duration || '', visible: true });
+            if (res.success) { showNotification('Prestation ajoutée.'); app.refreshCurrent(); }
+            else showNotification(res.error);
+        } catch (e) { showNotification('Erreur de connexion'); }
+    } else {
+        showNotification('API non configurée — ajout simulé localement.');
+    }
+}
+
+// ==================== HORAIRES ====================
+async function loadHoraires(container) {
+    const data = await loadConfigKey('horaires', {
+        schedule: [
+            { day: 'Lundi', state: 'Fermé', hours: '' },
+            { day: 'Mardi', state: 'Ouvert', hours: '09:00 - 19:00' },
+            { day: 'Mercredi', state: 'Ouvert', hours: '09:00 - 19:00' },
+            { day: 'Jeudi', state: 'Ouvert', hours: '09:00 - 19:00' },
+            { day: 'Vendredi', state: 'Ouvert', hours: '09:00 - 20:00' },
+            { day: 'Samedi', state: 'Ouvert', hours: '09:00 - 18:00' },
+            { day: 'Dimanche', state: 'Fermé', hours: '' }
+        ],
+        exceptions: []
+    });
+    renderHorairesUI(container, data);
+}
+
+function renderHorairesUI(container, data) {
+    container.innerHTML = `
+        <div class="mb-6"><h2 class="text-xl font-medium text-gray-900 mb-1">Configuration des plages d'ouverture</h2><p class="text-gray-500 text-sm">Modifiez vos horaires et gérez vos indisponibilités.</p></div>
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <div class="bg-white p-6 rounded-lg border border-gray-200 lg:col-span-2">
+                <h3 class="text-sm font-semibold text-gray-900 uppercase tracking-wider mb-4">Grille hebdomadaire</h3>
+                <div class="space-y-4">
+                    ${data.schedule.map((item, idx) => `
+                        <div class="flex flex-col sm:flex-row sm:items-center justify-between p-3 border-b border-gray-100 gap-4">
+                            <span class="font-medium text-gray-800 text-sm w-24">${item.day}</span>
+                            <div class="flex items-center gap-4">
+                                <select onchange="updateHoraire(${idx},'state',this.value)" class="border border-gray-300 rounded px-2.5 py-1 text-xs bg-white">
+                                    <option value="Ouvert" ${item.state==='Ouvert'?'selected':''}>Ouvert</option>
+                                    <option value="Fermé" ${item.state==='Fermé'?'selected':''}>Fermé</option>
+                                </select>
+                                <input type="text" value="${item.hours || ''}" onchange="updateHoraire(${idx},'hours',this.value)" class="border border-gray-300 rounded px-3 py-1 text-xs w-48 bg-white">
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+            <div class="bg-white p-6 rounded-lg border border-gray-200 flex flex-col justify-between">
+                <div>
+                    <h3 class="text-sm font-semibold text-gray-900 uppercase tracking-wider mb-4">Exceptions & Congés</h3>
+                    <p class="text-xs text-gray-500 mb-4">Les jours listés bloqueront toute réservation.</p>
+                    <div class="space-y-3">
+                        ${(data.exceptions||[]).map((ex, idx) => `
+                            <div class="p-3 bg-red-50 border border-red-200 rounded flex justify-between items-center text-xs">
+                                <div><p class="font-semibold text-red-900">${ex.label}</p><p class="text-red-700 mt-0.5">${ex.date}</p></div>
+                                <button onclick="deleteException(${idx})" class="text-red-400 hover:text-red-700 font-bold">Supprimer</button>
+                            </div>
+                        `).join('') || '<p class="text-xs text-gray-400">Aucune exception.</p>'}
+                    </div>
+                </div>
+                <div class="pt-6 border-t border-gray-100 mt-6">
+                    <button onclick="addExceptionPrompt()" class="w-full text-center py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-800 rounded text-xs font-medium transition-colors">Ajouter une date d'exception</button>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+async function updateHoraire(idx, field, value) {
+    const data = await loadConfigKey('horaires', { schedule: [], exceptions: [] });
+    data.schedule[idx][field] = value;
+    await saveConfigKey('horaires', data);
+}
+
+async function deleteException(idx) {
+    const data = await loadConfigKey('horaires', { schedule: [], exceptions: [] });
+    data.exceptions.splice(idx, 1);
+    await saveConfigKey('horaires', data);
+    app.refreshCurrent();
+}
+
+async function addExceptionPrompt() {
+    const label = prompt('Intitulé :');
+    const date = prompt('Dates (ex: 15 Juillet - 20 Juillet) :');
+    if (!label || !date) return;
+    const data = await loadConfigKey('horaires', { schedule: [], exceptions: [] });
+    data.exceptions.push({ label, date, blocked: true });
+    await saveConfigKey('horaires', data);
+    app.refreshCurrent();
+}
+
+// ==================== PRÉSENTATION ====================
+async function loadPresentation(container) {
+    const data = await loadConfigKey('presentation', {
+        text: 'Bienvenue au Studio 739, votre havre de beauté capillaire situé en plein cœur de la ville.',
+        collaborators: [],
+        reviews: []
+    });
+    renderPresentationUI(container, data);
+}
+
+function renderPresentationUI(container, data) {
+    container.innerHTML = `
+        <div class="mb-6"><h2 class="text-xl font-medium text-gray-900 mb-1">Édition du site vitrine</h2><p class="text-gray-500 text-sm">Personnalisez la présentation générale, votre équipe et les témoignages.</p></div>
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+            <div class="bg-white p-6 rounded-lg border border-gray-200 flex flex-col">
+                <h3 class="text-sm font-semibold text-gray-900 uppercase tracking-wider mb-4">Contenu de présentation</h3>
+                <textarea id="editorial-editor" class="w-full border border-gray-300 rounded p-4 text-xs flex-1 h-48 focus:ring-1 focus:ring-blue-500 focus:outline-none mb-4" oninput="updateEditorialPreview()">${data.text || ''}</textarea>
+                <div class="bg-gray-50 p-4 rounded border border-gray-200">
+                    <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Prévisualisation</p>
+                    <div id="editorial-preview" class="text-xs text-gray-700 italic space-y-2">${data.text || ''}</div>
+                </div>
+                <button onclick="savePresentation()" class="mt-3 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded text-xs font-medium self-end">Enregistrer</button>
+            </div>
+            <div class="bg-white p-6 rounded-lg border border-gray-200">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-sm font-semibold text-gray-900 uppercase tracking-wider">Collaborateurs</h3>
+                    <button onclick="addCollaboratorPrompt()" class="text-xs text-blue-600 font-semibold hover:underline">Ajouter</button>
+                </div>
+                <div class="space-y-3">
+                    ${(data.collaborators||[]).map((col, idx) => `
+                        <div class="p-3 bg-gray-50 border border-gray-200 rounded flex justify-between items-center text-xs">
+                            <div><p class="font-bold text-gray-900">${col.name}</p><p class="text-gray-500 mt-0.5">${col.role}</p></div>
+                            <div class="flex items-center gap-2">
+                                <span class="text-[10px] font-semibold uppercase text-gray-400">${col.active ? 'Actif' : 'Désactivé'}</span>
+                                <button onclick="toggleCollaboratorStatus(${idx})" class="w-10 h-5 ${col.active ? 'bg-green-600' : 'bg-gray-300'} rounded-full transition-colors relative">
+                                    <span class="absolute top-0.5 left-0.5 bg-white w-4 h-4 rounded-full transition-transform ${col.active ? 'translate-x-5' : ''}"></span>
+                                </button>
+                                <button onclick="removeCollaborator(${idx})" class="text-red-400 hover:text-red-700 font-bold ml-2">✕</button>
+                            </div>
+                        </div>
+                    `).join('') || '<p class="text-xs text-gray-400">Aucun collaborateur.</p>'}
+                </div>
+            </div>
+        </div>
+        <div class="bg-white p-6 rounded-lg border border-gray-200">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-sm font-semibold text-gray-900 uppercase tracking-wider">Témoignages & Avis</h3>
+                <button onclick="addReviewPrompt()" class="text-xs text-blue-600 font-semibold hover:underline">Créer un témoignage</button>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                ${(data.reviews||[]).map((rev, idx) => `
+                    <div class="border border-gray-200 p-4 rounded bg-gray-50 text-xs relative">
+                        <button onclick="removeReview(${idx})" class="absolute top-2 right-2 text-red-400 hover:text-red-700">✕</button>
+                        <div class="flex justify-between items-center mb-2">
+                            <span class="font-bold text-gray-900">${rev.author}</span>
+                            <span class="text-yellow-600 font-bold">${'★'.repeat(rev.rating || 5)}</span>
+                        </div>
+                        <p class="text-gray-600 italic">"${rev.text}"</p>
+                    </div>
+                `).join('') || '<p class="text-xs text-gray-400">Aucun témoignage.</p>'}
+            </div>
+        </div>
+    `;
+}
+
+function updateEditorialPreview() {
+    const val = document.getElementById('editorial-editor')?.value || '';
+    const prev = document.getElementById('editorial-preview');
+    if (prev) prev.textContent = val;
+}
+
+async function savePresentation() {
+    const text = document.getElementById('editorial-editor')?.value || '';
+    const data = await loadConfigKey('presentation', { text: '', collaborators: [], reviews: [] });
+    data.text = text;
+    await saveConfigKey('presentation', data);
+}
+
+async function toggleCollaboratorStatus(idx) {
+    const data = await loadConfigKey('presentation', { text: '', collaborators: [], reviews: [] });
+    if (data.collaborators[idx]) data.collaborators[idx].active = !data.collaborators[idx].active;
+    await saveConfigKey('presentation', data);
+    app.refreshCurrent();
+}
+
+async function removeCollaborator(idx) {
+    const data = await loadConfigKey('presentation', { text: '', collaborators: [], reviews: [] });
+    data.collaborators.splice(idx, 1);
+    await saveConfigKey('presentation', data);
+    app.refreshCurrent();
+}
+
+async function addCollaboratorPrompt() {
+    const name = prompt('Prénom :');
+    const role = prompt('Rôle :');
+    if (!name || !role) return;
+    const data = await loadConfigKey('presentation', { text: '', collaborators: [], reviews: [] });
+    data.collaborators.push({ name, role, active: true });
+    await saveConfigKey('presentation', data);
+    app.refreshCurrent();
+}
+
+async function removeReview(idx) {
+    const data = await loadConfigKey('presentation', { text: '', collaborators: [], reviews: [] });
+    data.reviews.splice(idx, 1);
+    await saveConfigKey('presentation', data);
+    app.refreshCurrent();
+}
+
+async function addReviewPrompt() {
+    const author = prompt('Prénom :');
+    const text = prompt('Texte :');
+    if (!author || !text) return;
+    const data = await loadConfigKey('presentation', { text: '', collaborators: [], reviews: [] });
+    data.reviews.push({ author, text, rating: 5 });
+    await saveConfigKey('presentation', data);
+    app.refreshCurrent();
+}
+
+// ==================== PRATIQUES ====================
+async function loadPratiques(container) {
+    const data = await loadConfigKey('pratiques', {
+        nom: 'Studio 739', telephone: '01 42 34 56 78', email: 'hello@studio739.fr',
+        maps: 'https://maps.google.com/?q=Studio+739', instagram: '@studio739', note: '4.9 (124 avis)'
+    });
+    container.innerHTML = `
+        <div class="mb-6"><h2 class="text-xl font-medium text-gray-900 mb-1">Informations pratiques</h2><p class="text-gray-500 text-sm">Gérez les coordonnées publiques affichées sur votre site.</p></div>
+        <div class="bg-white p-8 rounded-lg border border-gray-200 max-w-3xl">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                <div><label class="block text-xs font-semibold text-gray-500 uppercase mb-1">Nom d'affichage</label><input type="text" id="prat-nom" value="${data.nom || ''}" class="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:ring-1 focus:ring-blue-500"></div>
+                <div><label class="block text-xs font-semibold text-gray-500 uppercase mb-1">Téléphone public</label><input type="text" id="prat-tel" value="${data.telephone || ''}" class="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:ring-1 focus:ring-blue-500"></div>
+                <div><label class="block text-xs font-semibold text-gray-500 uppercase mb-1">Email public</label><input type="email" id="prat-email" value="${data.email || ''}" class="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:ring-1 focus:ring-blue-500"></div>
+                <div><label class="block text-xs font-semibold text-gray-500 uppercase mb-1">Lien Google Maps</label><input type="text" id="prat-maps" value="${data.maps || ''}" class="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:ring-1 focus:ring-blue-500"></div>
+                <div><label class="block text-xs font-semibold text-gray-500 uppercase mb-1">Instagram</label><input type="text" id="prat-insta" value="${data.instagram || ''}" class="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:ring-1 focus:ring-blue-500"></div>
+                <div><label class="block text-xs font-semibold text-gray-500 uppercase mb-1">Note Google Business</label><input type="text" id="prat-note" value="${data.note || ''}" disabled class="w-full border border-gray-300 rounded px-3 py-2 text-sm bg-gray-100 text-gray-500"></div>
+            </div>
+            <div class="flex justify-end">
+                <button class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded text-xs font-medium transition-colors" onclick="savePratiques()">Enregistrer les modifications</button>
+            </div>
+        </div>
+    `;
+}
+
+async function savePratiques() {
+    const data = {
+        nom: document.getElementById('prat-nom').value,
+        telephone: document.getElementById('prat-tel').value,
+        email: document.getElementById('prat-email').value,
+        maps: document.getElementById('prat-maps').value,
+        instagram: document.getElementById('prat-insta').value,
+        note: document.getElementById('prat-note').value
+    };
+    await saveConfigKey('pratiques', data);
+}
+
+// ==================== PARAMÈTRES ====================
+async function loadParametres(container) {
+    const data = await loadConfigKey('parametres', { minHours: 2, maxMonths: 3, subject: 'Confirmation de votre rendez-vous', body: 'Bonjour {prenom},\n\nNous confirmons votre rendez-vous pour {prestation} le {date} à {heure}.\n\nÀ très vite !' });
+    container.innerHTML = `
+        <div class="mb-6"><h2 class="text-xl font-medium text-gray-900 mb-1">Paramètres du site & Notifications</h2><p class="text-gray-500 text-sm">Configurez les règles de réservation et les templates d'email.</p></div>
+        <div class="space-y-6 max-w-4xl">
+            <div class="bg-white p-6 rounded-lg border border-gray-200">
+                <h3 class="text-sm font-semibold text-gray-900 uppercase tracking-wider mb-4">Règles de réservation</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div><label class="block text-xs font-semibold text-gray-500 uppercase mb-1">Délai minimal (heures)</label><input type="number" id="param-min" value="${data.minHours || 2}" class="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:ring-1 focus:ring-blue-500"></div>
+                    <div><label class="block text-xs font-semibold text-gray-500 uppercase mb-1">Délai max à l'avance (mois)</label><input type="number" id="param-max" value="${data.maxMonths || 3}" class="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:ring-1 focus:ring-blue-500"></div>
+                </div>
+            </div>
+            <div class="bg-white p-6 rounded-lg border border-gray-200">
+                <h3 class="text-sm font-semibold text-gray-900 uppercase tracking-wider mb-4">Template email confirmation</h3>
+                <div class="space-y-4">
+                    <div><label class="block text-xs font-semibold text-gray-500 uppercase mb-1">Objet</label><input type="text" id="param-subj" value="${data.subject || ''}" class="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:ring-1 focus:ring-blue-500"></div>
+                    <div><label class="block text-xs font-semibold text-gray-500 uppercase mb-1">Corps ({prenom}, {date}, {heure}, {prestation})</label><textarea id="param-body" class="w-full border border-gray-300 rounded p-3 text-xs h-32 focus:ring-1 focus:ring-blue-500 focus:outline-none">${data.body || ''}</textarea></div>
+                </div>
+                <div class="flex justify-end mt-4">
+                    <button class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded text-xs font-medium transition-colors" onclick="saveParametres()">Enregistrer les templates</button>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+async function saveParametres() {
+    const data = {
+        minHours: parseInt(document.getElementById('param-min').value) || 2,
+        maxMonths: parseInt(document.getElementById('param-max').value) || 3,
+        subject: document.getElementById('param-subj').value,
+        body: document.getElementById('param-body').value
+    };
+    await saveConfigKey('parametres', data);
+}
+
+// ==================== ANALYTICS ====================
+async function loadAnalytics(container) {
+    let statsData;
+    if (isApiConfigured) {
+        const data = await apiGet('getStats');
+        if (data.success) statsData = data;
+    } else {
+        statsData = { stats: { totalReservations: 0, pending: 0, revenue: 0, confirmationRate: 0 } };
+    }
+    const s = statsData.stats;
+    container.innerHTML = `
+        <div class="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div><h2 class="text-xl font-medium text-gray-900 mb-1">Analyses & Statistiques avancées</h2><p class="text-gray-500 text-sm">Visualisez l'évolution de la conversion.</p></div>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            <div class="bg-white p-6 rounded-lg border border-gray-200"><p class="text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">Réservations totales</p><p class="text-2xl font-bold text-gray-900">${s.totalReservations}</p></div>
+            <div class="bg-white p-6 rounded-lg border border-gray-200"><p class="text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">Taux de validation</p><p class="text-2xl font-bold text-blue-600">${s.confirmationRate}%</p></div>
+            <div class="bg-white p-6 rounded-lg border border-gray-200"><p class="text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">CA estimé</p><p class="text-2xl font-bold text-green-600">${s.revenue} €</p></div>
+        </div>
+        <div class="bg-white p-6 rounded-lg border border-gray-200">
+            <h3 class="text-sm font-semibold text-gray-900 uppercase tracking-wider mb-4">Répartition par statut</h3>
             <div class="space-y-3">
-              <input id="client-nom" placeholder="Nom complet">
-              <input id="client-email" placeholder="Email" type="email">
-              <input id="client-tel" placeholder="Téléphone">
-              <input id="client-visites" placeholder="Visites" type="number" value="0">
-              <input id="client-fidelite" placeholder="Fidélité">
-              <textarea id="client-notes" placeholder="Notes" rows="2"></textarea>
-            </div>
-            <div class="flex justify-end gap-2 mt-5">
-              <button onclick="closeModal('modal-client')" class="btn-secondary">Annuler</button>
-              <button onclick="submitAddClient()" class="btn-primary">Ajouter</button>
-            </div>
-          </div>
-        </div>
-      `;
-      document.getElementById('content').innerHTML = html;
-    }
-
-    function openAddClient() { document.getElementById('modal-client')?.classList.remove('hidden'); }
-    function closeModal(id) { document.getElementById(id)?.classList.add('hidden'); }
-
-    async function submitAddClient() {
-      const data = {
-        action: 'addClient',
-        nom: document.getElementById('client-nom').value,
-        email: document.getElementById('client-email').value,
-        telephone: document.getElementById('client-tel').value,
-        visites: document.getElementById('client-visites').value,
-        fidelite: document.getElementById('client-fidelite').value,
-        notes: document.getElementById('client-notes').value
-      };
-      try {
-        const res = await apiPost(data);
-        if (res.success) { closeModal('modal-client'); showAlert('Client ajouté', 'success'); await loadClients(); }
-        else { showAlert(res.error); }
-      } catch (err) { showAlert(err.message); }
-    }
-
-    // ==================== SERVICES ====================
-    async function loadServices() {
-      const data = await apiGet('getServices');
-      if (!data.success) throw new Error(data.error);
-      state.services = data.data || [];
-      renderServices();
-    }
-
-    function renderServices() {
-      const html = `
-        <div class="fade-in space-y-4">
-          <div class="flex items-center justify-between">
-            <h2 class="text-sm font-semibold text-gray-500 uppercase">Catalogue des prestations</h2>
-            <button onclick="openAddService()" class="btn-primary">+ Ajouter une prestation</button>
-          </div>
-          <div class="card table-container">
-            <table class="data-table">
-              <thead><tr>
-                <th>Catégorie</th><th>Nom</th><th>Prix</th><th>Durée</th><th>Visible</th><th>Actions</th>
-              </tr></thead>
-              <tbody>
-                ${state.services.length === 0 ? '<tr><td colspan="6" class="text-center text-gray-400 py-8">Aucune prestation</td></tr>' : ''}
-                ${state.services.map((s, idx) => `
-                  <tr>
-                    <td><span class="text-xs font-medium bg-gray-100 text-gray-600 px-2 py-1 rounded">${s.Catégorie || '-'}</span></td>
-                    <td class="font-medium text-gray-900">${s.Nom || '-'}</td>
-                    <td class="text-teal-600 font-semibold">${formatPrice(s.Prix)}</td>
-                    <td>${s.Durée || '-'}</td>
-                    <td><span class="status-badge ${s.Visible === 'Oui' ? 'status-confirmed' : 'status-cancelled'}">${s.Visible || 'Oui'}</span></td>
-                    <td>
-                      <div class="flex gap-2">
-                        <button onclick="editService('${s.ID}')" class="btn-secondary text-xs">Modifier</button>
-                        <button onclick="deleteService('${s.ID}')" class="btn-danger text-xs">Supprimer</button>
-                      </div>
-                    </td>
-                  </tr>
+                ${[['Confirmées / Terminées', s.confirmationRate], ['En attente', Math.round((s.pending / Math.max(s.totalReservations,1)) * 100)]].map(([label, pct]) => `
+                    <div><div class="flex justify-between text-xs font-medium text-gray-700 mb-1"><span>${label}</span><span>${pct}%</span></div>
+                    <div class="w-full bg-gray-100 rounded-full h-2"><div class="bg-blue-600 h-2 rounded-full" style="width:${pct}%"></div></div></div>
                 `).join('')}
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        <!-- Modal Add Service -->
-        <div id="modal-service" class="hidden fixed inset-0 bg-black/30 flex items-center justify-center z-50">
-          <div class="bg-white rounded-xl p-6 w-full max-w-md shadow-xl">
-            <h3 id="service-modal-title" class="text-lg font-semibold mb-4">Nouvelle prestation</h3>
-            <input type="hidden" id="service-id">
-            <div class="space-y-3">
-              <input id="service-categorie" placeholder="Catégorie (ex: Coupes)">
-              <input id="service-nom" placeholder="Nom de la prestation">
-              <input id="service-prix" placeholder="Prix (ex: 45€)">
-              <input id="service-duree" placeholder="Durée (ex: 45 min)">
-              <select id="service-visible">
-                <option value="Oui">Visible</option>
-                <option value="Non">Caché</option>
-              </select>
             </div>
-            <div class="flex justify-end gap-2 mt-5">
-              <button onclick="closeModal('modal-service')" class="btn-secondary">Annuler</button>
-              <button onclick="submitService()" class="btn-primary">Enregistrer</button>
-            </div>
-          </div>
         </div>
-      `;
-      document.getElementById('content').innerHTML = html;
-    }
+    `;
+}
 
-    function openAddService() {
-      document.getElementById('service-modal-title').textContent = 'Nouvelle prestation';
-      document.getElementById('service-id').value = '';
-      document.getElementById('service-categorie').value = '';
-      document.getElementById('service-nom').value = '';
-      document.getElementById('service-prix').value = '';
-      document.getElementById('service-duree').value = '';
-      document.getElementById('service-visible').value = 'Oui';
-      document.getElementById('modal-service').classList.remove('hidden');
-    }
+// ==================== COMPTE ====================
+function getCompteHTML() {
+    return `
+        <div class="mb-6"><h2 class="text-xl font-medium text-gray-900 mb-1">Mon Compte</h2><p class="text-gray-500 text-sm">Gérez vos informations de connexion.</p></div>
+        <div class="bg-white p-8 rounded-lg border border-gray-200 max-w-xl">
+            <div class="space-y-6">
+                <div><label class="block text-xs font-semibold text-gray-500 uppercase mb-1">Nom d'administrateur</label><input type="text" value="Lorenzo" class="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:ring-1 focus:ring-blue-500"></div>
+                <div><label class="block text-xs font-semibold text-gray-500 uppercase mb-1">Email de connexion</label><input type="email" value="lorenzo@studio739.fr" class="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:ring-1 focus:ring-blue-500"></div>
+                <div><label class="block text-xs font-semibold text-gray-500 uppercase mb-1">Nouveau mot de passe</label><input type="password" placeholder="••••••••" class="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:ring-1 focus:ring-blue-500"></div>
+                <div class="pt-6 border-t border-gray-100"><button class="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded text-xs font-medium" onclick="showNotification('Profil sauvegardé.')">Sauvegarder</button></div>
+            </div>
+        </div>
+    `;
+}
 
-    function editService(id) {
-      const s = state.services.find(x => x.ID === id);
-      if (!s) return;
-      document.getElementById('service-modal-title').textContent = 'Modifier prestation';
-      document.getElementById('service-id').value = s.ID;
-      document.getElementById('service-categorie').value = s.Catégorie || '';
-      document.getElementById('service-nom').value = s.Nom || '';
-      document.getElementById('service-prix').value = s.Prix || '';
-      document.getElementById('service-duree').value = s.Durée || '';
-      document.getElementById('service-visible').value = s.Visible || 'Oui';
-      document.getElementById('modal-service').classList.remove('hidden');
-    }
+// ==================== AIDE ====================
+function getAideHTML() {
+    return `
+        <div class="mb-6"><h2 class="text-xl font-medium text-gray-900 mb-1">Centre d'aide & Support</h2><p class="text-gray-500 text-sm">Tutoriels et contact technique.</p></div>
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <div class="bg-white p-6 rounded-lg border border-gray-200 lg:col-span-2">
+                <h3 class="text-sm font-semibold text-gray-900 uppercase tracking-wider mb-4">Questions fréquentes</h3>
+                <div class="space-y-4">
+                    <div class="border-b border-gray-100 pb-4">
+                        <h4 class="font-medium text-gray-900 text-sm mb-1">Comment valider un dossier ?</h4>
+                        <p class="text-xs text-gray-500">Allez dans "Réservations", repérez les lignes "En attente" et cliquez sur "Valider".</p>
+                    </div>
+                    <div class="border-b border-gray-100 pb-4">
+                        <h4 class="font-medium text-gray-900 text-sm mb-1">Où configurer un congé ?</h4>
+                        <p class="text-xs text-gray-500">Dans "Horaires & Congés", utilisez le panneau "Exceptions & Congés".</p>
+                    </div>
+                </div>
+            </div>
+            <div class="bg-white p-6 rounded-lg border border-gray-200 flex flex-col justify-between">
+                <div>
+                    <h3 class="text-sm font-semibold text-gray-900 uppercase tracking-wider mb-4">Contacter l'administrateur</h3>
+                    <textarea id="support-message" placeholder="Votre message..." class="w-full border border-gray-300 rounded p-3 text-xs h-32 focus:ring-1 focus:ring-blue-500 focus:outline-none bg-gray-50 mb-4"></textarea>
+                </div>
+                <button onclick="sendSupportMessage()" class="w-full text-center py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded text-xs font-medium transition-colors">Envoyer</button>
+            </div>
+        </div>
+    `;
+}
 
-    async function submitService() {
-      const id = document.getElementById('service-id').value;
-      const params = {
-        categorie: document.getElementById('service-categorie').value,
-        nom: document.getElementById('service-nom').value,
-        prix: document.getElementById('service-prix').value,
-        duree: document.getElementById('service-duree').value,
-        visible: document.getElementById('service-visible').value === 'Oui'
-      };
-      try {
-        let res;
-        if (id) {
-          // Edition: on met à jour chaque champ modifié (simplifié: on update tous)
-          // Note: l'API ne supporte qu'un champ à la fois pour updateService
-          // Donc on fait plusieurs appels ou on utilise un workaround
-          // Pour simplifier, on va supprimer et recréer (pas idéal mais fonctionne)
-          await apiPost({ action: 'deleteService', id });
-          res = await apiPost({ action: 'addService', ...params });
-        } else {
-          res = await apiPost({ action: 'addService', ...params });
-        }
-        if (res.success) { closeModal('modal-service'); showAlert(id ? 'Prestation modifiée' : 'Prestation ajoutée', 'success'); await loadServices(); }
-        else { showAlert(res.error); }
-      } catch (err) { showAlert(err.message); }
-    }
+function sendSupportMessage() {
+    const text = document.getElementById('support-message')?.value;
+    if (text) { showNotification('Ticket envoyé à Lorenzo (Support B739).'); document.getElementById('support-message').value = ''; }
+    else showNotification('Veuillez saisir un message.');
+}
 
-    async function deleteService(id) {
-      if (!confirm('Supprimer cette prestation ?')) return;
-      try {
-        const res = await apiPost({ action: 'deleteService', id });
-        if (res.success) { showAlert('Prestation supprimée', 'success'); await loadServices(); }
-        else { showAlert(res.error); }
-      } catch (err) { showAlert(err.message); }
-    }
+function handleLogout() { showNotification('Déconnexion de la session.'); }
+function confirmDeleteAccount() { showNotification('Demande programmée selon les règles RGPD.'); }
 
-    // ==================== INIT ====================
+// ==================== ONBOARDING ====================
+function initOnboarding() {
+    document.getElementById('onboarding-back')?.addEventListener('click', () => {
+        if (currentOnboardingStep > 1) { currentOnboardingStep--; updateOnboardingUI(); }
+    });
+    document.getElementById('onboarding-next')?.addEventListener('click', () => {
+        if (currentOnboardingStep < 3) { currentOnboardingStep++; updateOnboardingUI(); }
+        else document.getElementById('onboarding-modal').classList.add('hide');
+    });
+}
+
+function triggerOnboarding() {
+    currentOnboardingStep = 1;
+    updateOnboardingUI();
+    document.getElementById('onboarding-modal').classList.remove('hide');
+}
+
+function updateOnboardingUI() {
+    const indicator = document.getElementById('onboarding-step-indicator');
+    const backBtn = document.getElementById('onboarding-back');
+    const nextBtn = document.getElementById('onboarding-next');
+    if (indicator) indicator.textContent = `Étape ${currentOnboardingStep} sur 3`;
+    if (backBtn) backBtn.disabled = currentOnboardingStep === 1;
+    if (nextBtn) nextBtn.textContent = currentOnboardingStep === 3 ? 'Terminer' : 'Suivant';
+    [1,2,3].forEach(i => {
+        const el = document.getElementById(`onboarding-step-${i}`);
+        if (el) el.classList.toggle('hide', i !== currentOnboardingStep);
+    });
+}
+
+// ==================== INIT ====================
+function initApp() {
+    buildMobileSidebar();
+    initOnboarding();
+    showApiBanner();
     app.navigate('dashboard');
-  </script>
+}
+
+document.addEventListener('DOMContentLoaded', initApp);
+</script>
 </body>
 </html>
